@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>0-1 背包表格动态绘制过程演示 (已修正版)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            display: flex;
+            gap: 25px;
+        }
+        .left-pane {
+            flex: 2;
+        }
+        .right-pane {
+            flex: 1;
+            background: #f8f9fa;
+            border-left: 1px solid #dee2e6;
+            padding: 20px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+        }
+        h2 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ced4da;
+            padding: 10px;
+            text-align: center;
+            font-size: 14px;
+            width: 12%;
+            height: 40px;
+        }
+        th {
+            background-color: #343a40;
+            color: white;
+        }
+        .row-header {
+            background-color: #e9ecef;
+            font-weight: bold;
+            text-align: left;
+            width: 28%;
+        }
+        /* 格子状态 */
+        .cell-empty {
+            color: #ccc;
+            background-color: #fafafa;
+            border: 1px dashed #dee2e6;
+        }
+        .cell-filled {
+            background-color: #fff;
+            font-weight: bold;
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { background-color: #ffeaa7; transform: scale(1.05); }
+            to { background-color: #fff; transform: scale(1); }
+        }
+        /* 动态高亮状态 */
+        .active-calc {
+            background-color: #2ecc71 !important; /* 绿色：当前计算格 */
+            color: white !important;
+            font-weight: bold;
+        }
+        .active-above {
+            background-color: #e67e22 !important; /* 橙色：正上方 */
+            color: white !important;
+        }
+        .active-source {
+            background-color: #3498db !important; /* 蓝色：剩余空间 */
+            color: white !important;
+        }
+        /* 控制按钮 */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 18px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn-next { background: #2ecc71; color: white; }
+        .btn-next:hover { background: #27ae60; }
+        .btn-auto { background: #3498db; color: white; }
+        .btn-auto:hover { background: #2980b9; }
+        .btn-reset { background: #e74c3c; color: white; }
+        .btn-reset:hover { background: #c0392b; }
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            color: #7f8c8d;
+        }
+        /* 日志区域 */
+        .log-box {
+            flex-grow: 1;
+            background: white;
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+            overflow-y: auto;
+            max-height: 350px;
+            margin-top: 15px;
+            line-height: 1.5;
+        }
+        .legend {
+            margin-top: 15px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="left-pane">
+        <h2>0-1 背包：逐步绘制演示 (修正版)</h2>
+        <p style="color: #6c757d; font-size: 14px;">
+            模拟背包容量为 5kg。观察计算机如何利用“写新格、查旧格”的规律填表。
+        </p>
+
+        <table id="drawTable">
+            <thead>
+                <tr>
+                    <th>物品 (重量, 价值)</th>
+                    <th>0kg</th>
+                    <th>1kg</th>
+                    <th>2kg</th>
+                    <th>3kg</th>
+                    <th>4kg</th>
+                    <th>5kg</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 修正：补全了 data-col 属性，防止定位失败 -->
+                <tr data-row="0">
+                    <td class="row-header">初始化 (无物品)</td>
+                    <td data-col="0">0</td>
+                    <td data-col="1">0</td>
+                    <td data-col="2">0</td>
+                    <td data-col="3">0</td>
+                    <td data-col="4">0</td>
+                    <td data-col="5">0</td>
+                </tr>
+                <tr data-row="1">
+                    <td class="row-header">书本 (1kg, 10元)</td>
+                    <td class="cell-empty" data-col="0">-</td>
+                    <td class="cell-empty" data-col="1">-</td>
+                    <td class="cell-empty" data-col="2">-</td>
+                    <td class="cell-empty" data-col="3">-</td>
+                    <td class="cell-empty" data-col="4">-</td>
+                    <td class="cell-empty" data-col="5">-</td>
+                </tr>
+                <tr data-row="2">
+                    <td class="row-header">玩具 (2kg, 15元)</td>
+                    <td class="cell-empty" data-col="0">-</td>
+                    <td class="cell-empty" data-col="1">-</td>
+                    <td class="cell-empty" data-col="2">-</td>
+                    <td class="cell-empty" data-col="3">-</td>
+                    <td class="cell-empty" data-col="4">-</td>
+                    <td class="cell-empty" data-col="5">-</td>
+                </tr>
+                <tr data-row="3">
+                    <td class="row-header">手机 (3kg, 40元)</td>
+                    <td class="cell-empty" data-col="0">-</td>
+                    <td class="cell-empty" data-col="1">-</td>
+                    <td class="cell-empty" data-col="2">-</td>
+                    <td class="cell-empty" data-col="3">-</td>
+                    <td class="cell-empty" data-col="4">-</td>
+                    <td class="cell-empty" data-col="5">-</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="controls">
+            <button class="btn-next" id="btnNext">下一步 (手动)</button>
+            <button class="btn-auto" id="btnAuto">自动播放</button>
+            <button class="btn-reset" id="btnReset">重置</button>
+        </div>
+
+        <div class="legend">
+            <span style="color: #2ecc71;">■</span> 当前计算格 &nbsp;&nbsp;
+            <span style="color: #e67e22;">■</span> 不选当前物品 (正上方历史解) &nbsp;&nbsp;
+            <span style="color: #3498db;">■</span> 选当前物品所需的剩余空间历史解
+        </div>
+    </div>
+
+    <div class="right-pane">
+        <h3 style="margin-top: 0; color: #2c3e50;">执行日志</h3>
+        <div id="stepDesc" style="font-size: 13px; color: #495057; min-height: 80px; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;">
+            点击“下一步”或“自动播放”开始。
+        </div>
+        <div class="log-box" id="logBox"></div>
+    </div>
+</div>
+
+<script>
+    const items = [
+        { name: "初始", weight: 0, value: 0 },
+        { name: "书本", weight: 1, value: 10 },
+        { name: "玩具", weight: 2, value: 15 },
+        { name: "手机", weight: 3, value: 40 }
+    ];
+
+    const maxRow = 3;
+    const maxCol = 5;
+
+    let curRow = 1;
+    let curCol = 0;
+    let isPlaying = false;
+    let playInterval = null;
+
+    let dp = [
+        [0, 0, 0, 0, 0, 0],
+        [null, null, null, null, null, null],
+        [null, null, null, null, null, null],
+        [null, null, null, null, null, null]
+    ];
+
+    const table = document.getElementById('drawTable');
+    const btnNext = document.getElementById('btnNext');
+    const btnAuto = document.getElementById('btnAuto');
+    const btnReset = document.getElementById('btnReset');
+    const logBox = document.getElementById('logBox');
+    const stepDesc = document.getElementById('stepDesc');
+
+    function clearHighlights() {
+        table.querySelectorAll('td').forEach(cell => {
+            cell.classList.remove('active-calc', 'active-above', 'active-source');
+        });
+    }
+
+    function addLog(text, color = '#333') {
+        const p = document.createElement('div');
+        p.style.color = color;
+        p.style.marginBottom = '5px';
+        p.innerHTML = text;
+        logBox.appendChild(p);
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function reset() {
+        clearInterval(playInterval);
+        isPlaying = false;
+        btnAuto.innerText = "自动播放";
+        btnNext.disabled = false;
+        btnAuto.disabled = false;
+
+        curRow = 1;
+        curCol = 0;
+        dp = [
+            [0, 0, 0, 0, 0, 0],
+            [null, null, null, null, null, null],
+            [null, null, null, null, null, null],
+            [null, null, null, null, null, null]
+        ];
+
+        for (let r = 1; r <= maxRow; r++) {
+            for (let c = 0; c <= maxCol; c++) {
+                const cell = table.querySelector(`tr[data-row="${r}"] td[data-col="${c}"]`);
+                cell.innerText = "-";
+                cell.className = "cell-empty";
+            }
+        }
+        clearHighlights();
+        logBox.innerHTML = "";
+        stepDesc.innerHTML = "表格已重置。点击“下一步”开始绘制。";
+    }
+
+    function step() {
+        if (curRow > maxRow) {
+            clearInterval(playInterval);
+            btnAuto.innerText = "自动播放";
+            btnNext.disabled = true;
+            btnAuto.disabled = true;
+            stepDesc.innerHTML = "<strong>绘制完成！</strong> 最终右下角的 55 即为最大价值。";
+            addLog("🎉 <strong>表格所有状态绘制完毕！最终答案为 55。</strong>", "#27ae60");
+            return;
+        }
+
+        clearHighlights();
+
+        const item = items[curRow];
+        const col = curCol;
+
+        const cell = table.querySelector(`tr[data-row="${curRow}"] td[data-col="${col}"]`);
+        const aboveCell = table.querySelector(`tr[data-row="${curRow-1}"] td[data-col="${col}"]`);
+        
+        cell.classList.add('active-calc');
+        if (aboveCell) aboveCell.classList.add('active-above');
+
+        const valAbove = dp[curRow-1][col];
+        let finalVal = 0;
+        let desc = "";
+
+        if (col < item.weight) {
+            finalVal = valAbove;
+            desc = `<strong>计算格 [${item.name}, ${col}kg]：</strong><br>`;
+            desc += `当前容量 ${col}kg 小于物品重量 ${item.weight}kg，放不下该物品。<br>`;
+            desc += `决策：直接继承上方格子（不选当前物品）的值：<b>${valAbove}</b>`;
+            
+            addLog(`dp[${curRow}][${col}] = dp[${curRow-1}][${col}] = <b>${finalVal}</b>`);
+        } else {
+            const remainCol = col - item.weight;
+            const sourceCell = table.querySelector(`tr[data-row="${curRow-1}"] td[data-col="${remainCol}"]`);
+            if (sourceCell) sourceCell.classList.add('active-source');
+
+            const valSource = dp[curRow-1][remainCol];
+            const valWithCurrent = valSource + item.value;
+            finalVal = Math.max(valAbove, valWithCurrent);
+
+            desc = `<strong>计算格 [${item.name}, ${col}kg]：</strong><br>`;
+            desc += `容量足够。进行决策比较：<br>`;
+            desc += `• <strong>选择A (不放)</strong>：直接看上方：<b>${valAbove}</b> 元<br>`;
+            desc += `• <strong>选择B (要放)</strong>：新物品值 ${item.value} + 剩余空间 ${remainCol}kg 的解 ${valSource} = <b>${valWithCurrent}</b> 元<br>`;
+            desc += `取最大值：max(${valAbove}, ${valWithCurrent}) = <strong>${finalVal}</strong>`;
+
+            addLog(`dp[${curRow}][${col}] = max(${valAbove}, ${valSource} + ${item.value}) = <b>${finalVal}</b>`);
+        }
+
+        dp[curRow][col] = finalVal;
+        cell.innerText = finalVal;
+        cell.className = "cell-filled active-calc";
+        stepDesc.innerHTML = desc;
+
+        curCol++;
+        if (curCol > maxCol) {
+            curCol = 0;
+            curRow++;
+        }
+    }
+
+    btnNext.addEventListener('click', () => {
+        if (isPlaying) {
+            clearInterval(playInterval);
+            isPlaying = false;
+            btnAuto.innerText = "自动播放";
+        }
+        step();
+    });
+
+    btnAuto.addEventListener('click', () => {
+        if (isPlaying) {
+            clearInterval(playInterval);
+            isPlaying = false;
+            btnAuto.innerText = "自动播放";
+        } else {
+            isPlaying = true;
+            btnAuto.innerText = "暂停";
+            playInterval = setInterval(step, 1000);
+        }
+    });
+
+    btnReset.addEventListener('click', reset);
+
+</script>
+
+</body>
+</html>

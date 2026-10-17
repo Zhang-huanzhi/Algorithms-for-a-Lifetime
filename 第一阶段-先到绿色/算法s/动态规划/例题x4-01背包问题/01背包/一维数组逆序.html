@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>1D 数组多物品大表格动态演示</title>
+    <style>
+        body {
+            font-family: monospace;
+            background-color: #fafafa;
+            margin: 0;
+            padding: 20px;
+            color: #111;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+        }
+        .header-panel {
+            border-bottom: 2px solid #111;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .array-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            background: #eee;
+            padding: 10px;
+            border: 1px solid #bbb;
+        }
+        .cell-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-grow: 1;
+        }
+        .cell {
+            width: 90%;
+            height: 50px;
+            border: 1px solid #111;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .label {
+            font-size: 11px;
+            margin-top: 4px;
+        }
+        /* 状态高亮：极简风格 */
+        .target {
+            background-color: #d4edda !important; /* 绿色：当前写入 */
+            border: 2px solid #28a745 !important;
+        }
+        .source {
+            background-color: #cce5ff !important; /* 蓝色：数据源 */
+            border: 2px solid #004085 !important;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        select, button {
+            font-family: monospace;
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #111;
+            background: #fff;
+            cursor: pointer;
+        }
+        button:hover { background: #eee; }
+        .panel {
+            display: flex;
+            gap: 20px;
+        }
+        .info {
+            flex: 1;
+            border: 1px solid #ccc;
+            padding: 15px;
+            background: #fdfdfd;
+            font-size: 13px;
+        }
+        .log {
+            flex: 1;
+            border: 1px solid #ccc;
+            padding: 15px;
+            background: #222;
+            color: #fff;
+            font-size: 12px;
+            height: 180px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-panel">
+        <strong>1D 背包动态状态更新演示 (容量: 10kg)</strong><br>
+        物品 1 (W:2, V:10) | 物品 2 (W:3, V:15) | 物品 3 (W:4, V:25)
+    </div>
+
+    <!-- 模式选择 -->
+    <div class="controls">
+        <label>更新方向: 
+            <select id="direction">
+                <option value="rtl">从右往左 (逆序 - 正确)</option>
+                <option value="ltr">从左往右 (正序 - 错误)</option>
+            </select>
+        </label>
+        <button id="btnStep">单步执行</button>
+        <button id="btnReset">重置</button>
+    </div>
+
+    <!-- 1D 数组 -->
+    <div class="array-row">
+        <div class="cell-box"><div class="cell" id="c-0">0</div><div class="label">dp[0]</div></div>
+        <div class="cell-box"><div class="cell" id="c-1">0</div><div class="label">dp[1]</div></div>
+        <div class="cell-box"><div class="cell" id="c-2">0</div><div class="label">dp[2]</div></div>
+        <div class="cell-box"><div class="cell" id="c-3">0</div><div class="label">dp[3]</div></div>
+        <div class="cell-box"><div class="cell" id="c-4">0</div><div class="label">dp[4]</div></div>
+        <div class="cell-box"><div class="cell" id="c-5">0</div><div class="label">dp[5]</div></div>
+        <div class="cell-box"><div class="cell" id="c-6">0</div><div class="label">dp[6]</div></div>
+        <div class="cell-box"><div class="cell" id="c-7">0</div><div class="label">dp[7]</div></div>
+        <div class="cell-box"><div class="cell" id="c-8">0</div><div class="label">dp[8]</div></div>
+        <div class="cell-box"><div class="cell" id="c-9">0</div><div class="label">dp[9]</div></div>
+        <div class="cell-box"><div class="cell" id="c-10">0</div><div class="label">dp[10]</div></div>
+    </div>
+
+    <div class="panel">
+        <div class="info" id="infoBox">
+            点击“单步执行”开始。
+        </div>
+        <div class="log" id="logBox"></div>
+    </div>
+</div>
+
+<script>
+    const items = [
+        { name: "物品1", weight: 2, value: 10 },
+        { name: "物品2", weight: 3, value: 15 },
+        { name: "物品3", weight: 4, value: 25 }
+    ];
+
+    const capacity = 10;
+    let dp = Array(capacity + 1).fill(0);
+    let itemIdx = 0;
+    let curW = 10;
+    let direction = 'rtl';
+
+    const btnStep = document.getElementById('btnStep');
+    const btnReset = document.getElementById('btnReset');
+    const dirSelect = document.getElementById('direction');
+    const infoBox = document.getElementById('infoBox');
+    const logBox = document.getElementById('logBox');
+
+    function clearHighlight() {
+        for (let i = 0; i <= capacity; i++) {
+            document.getElementById(`c-${i}`).className = "cell";
+        }
+    }
+
+    function updateDOM() {
+        for (let i = 0; i <= capacity; i++) {
+            document.getElementById(`c-${i}`).innerText = dp[i];
+        }
+    }
+
+    function addLog(txt) {
+        const div = document.createElement('div');
+        div.innerText = txt;
+        logBox.appendChild(div);
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function init() {
+        dp.fill(0);
+        itemIdx = 0;
+        direction = dirSelect.value;
+        curW = (direction === 'rtl') ? capacity : items[0].weight;
+        clearHighlight();
+        updateDOM();
+        logBox.innerHTML = "";
+        btnStep.disabled = false;
+        infoBox.innerHTML = "就绪。当前处理: " + items[0].name + " (W:" + items[0].weight + ", V:" + items[0].value + ")，当前指针 w = " + curW;
+    }
+
+    function step() {
+        if (itemIdx >= items.length) {
+            infoBox.innerHTML = "<strong>执行结束。</strong>";
+            btnStep.disabled = true;
+            return;
+        }
+
+        clearHighlight();
+        const item = items[itemIdx];
+
+        if (direction === 'rtl') {
+            // 逆序逻辑
+            if (curW < item.weight) {
+                // 当前物品处理完毕，切到下个物品
+                addLog(`>>> ${item.name} 处理完毕`);
+                itemIdx++;
+                if (itemIdx < items.length) {
+                    curW = capacity;
+                    step(); // 递归执行新物品的第一步
+                } else {
+                    infoBox.innerHTML = "<strong>所有物品处理完毕。最终最优解为：" + dp[capacity] + "</strong>";
+                    btnStep.disabled = true;
+                }
+                return;
+            }
+
+            const target = curW;
+            const source = curW - item.weight;
+
+            document.getElementById(`c-${target}`).classList.add('target');
+            document.getElementById(`c-${source}`).classList.add('source');
+
+            const oldVal = dp[target];
+            const sourceVal = dp[source];
+            const newVal = Math.max(oldVal, sourceVal + item.value);
+
+            dp[target] = newVal;
+            updateDOM();
+
+            infoBox.innerHTML = `<strong>正在更新 dp[${target}] (当前物品: ${item.name})</strong><br>` +
+                `决策: max(当前值 ${oldVal}, 剩余空间 dp[${source}] 的值 ${sourceVal} + 价值 ${item.value}) = <strong>${newVal}</strong>`;
+            
+            addLog(`[${item.name}] dp[${target}] = max(${oldVal}, dp[${source}]+${item.value}) -> ${newVal}`);
+            
+            curW--;
+
+        } else {
+            // 正序逻辑
+            if (curW > capacity) {
+                addLog(`>>> ${item.name} 处理完毕 (产生了数据污染)`);
+                itemIdx++;
+                if (itemIdx < items.length) {
+                    curW = items[itemIdx].weight;
+                    step();
+                } else {
+                    infoBox.innerHTML = "<strong>所有物品处理完毕。最终污染值为：" + dp[capacity] + "</strong>";
+                    btnStep.disabled = true;
+                }
+                return;
+            }
+
+            const target = curW;
+            const source = curW - item.weight;
+
+            document.getElementById(`c-${target}`).classList.add('target');
+            document.getElementById(`c-${source}`).classList.add('source');
+
+            const oldVal = dp[target];
+            const sourceVal = dp[source];
+            const newVal = Math.max(oldVal, sourceVal + item.value);
+
+            dp[target] = newVal;
+            updateDOM();
+
+            infoBox.innerHTML = `<strong>正在更新 dp[${target}] (当前物品: ${item.name})</strong><br>` +
+                `决策: max(当前值 ${oldVal}, 剩余空间 dp[${source}] 的值 ${sourceVal} + 价值 ${item.value}) = <strong>${newVal}</strong>`;
+            
+            addLog(`[${item.name}] dp[${target}] = max(${oldVal}, dp[${source}]+${item.value}) -> ${newVal}`);
+
+            curW++;
+        }
+    }
+
+    btnStep.addEventListener('click', step);
+    btnReset.addEventListener('click', init);
+    dirSelect.addEventListener('change', init);
+
+    init();
+</script>
+
+</body>
+</html>

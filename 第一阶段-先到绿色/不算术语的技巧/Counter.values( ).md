@@ -1,0 +1,1 @@
+如果 arr 为空，max 会报错；给定 default=0 可以避坑 print(max(arr.values(), default=0))

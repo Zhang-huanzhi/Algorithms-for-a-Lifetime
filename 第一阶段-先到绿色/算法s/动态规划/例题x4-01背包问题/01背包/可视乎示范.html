@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>0-1 背包算法可视化思维工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f7f9fa;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 25px;
+        }
+        .items-info {
+            display: flex;
+            justify-content: space-around;
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+        .item-tag {
+            padding: 4px 8px;
+            background: #34495e;
+            color: white;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+        }
+        th, td {
+            border: 1px solid #bdc3c7;
+            padding: 12px;
+            text-align: center;
+            font-size: 15px;
+        }
+        th {
+            background-color: #34495e;
+            color: white;
+        }
+        .row-header {
+            background-color: #eaeded;
+            font-weight: bold;
+            text-align: left;
+        }
+        /* 交互高亮样式 */
+        td.interactive {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        td.interactive:hover {
+            background-color: #ebf5fb;
+        }
+        .highlight-self {
+            background-color: #2ecc71 !important; /* 绿色：当前计算格 */
+            color: white;
+            font-weight: bold;
+        }
+        .highlight-above {
+            background-color: #e67e22 !important; /* 橙色：不放当前物品（正上方） */
+            color: white;
+        }
+        .highlight-source {
+            background-color: #3498db !important; /* 蓝色：放当前物品所需的剩余空间 */
+            color: white;
+        }
+        .explain-box {
+            background: #fdf2e9;
+            border-left: 5px solid #e67e22;
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 15px;
+            line-height: 1.6;
+            min-height: 80px;
+        }
+        .color-legend {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .color-box {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>0-1 背包动态规划思维展示</h1>
+    <div class="subtitle">点击表格中的任意数字（第二行起），查看计算机的决策链路</div>
+
+    <div class="items-info">
+        <div><strong>背包最大容量：6 kg</strong></div>
+        <div>可用物品：
+            <span class="item-tag">书本 (1kg, 15元)</span>
+            <span class="item-tag">玩具 (2kg, 20元)</span>
+            <span class="item-tag">鞋子 (3kg, 30元)</span>
+            <span class="item-tag">相机 (4kg, 50元)</span>
+        </div>
+    </div>
+
+    <div class="color-legend">
+        <div class="legend-item"><div class="color-box" style="background: #2ecc71;"></div>当前格子 (正在计算)</div>
+        <div class="legend-item"><div class="color-box" style="background: #e67e22;"></div>选择A：不放当前物品 (直接继承正上方)</div>
+        <div class="legend-item"><div class="color-box" style="background: #3498db;"></div>选择B：放入当前物品 (腾出空间后的历史最优解)</div>
+    </div>
+
+    <table id="dpTable">
+        <thead>
+            <tr>
+                <th style="width: 25%;">可选物品范围 (Rows)</th>
+                <th>容量 0kg</th>
+                <th>容量 1kg</th>
+                <th>容量 2kg</th>
+                <th>容量 3kg</th>
+                <th>容量 4kg</th>
+                <th>容量 5kg</th>
+                <th>容量 6kg</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Row 0 -->
+            <tr data-row="0">
+                <td class="row-header">什么都不选</td>
+                <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td>
+            </tr>
+            <!-- Row 1 -->
+            <tr data-row="1">
+                <td class="row-header">只选：书本 (1kg, 15元)</td>
+                <td class="interactive" data-col="0">0</td>
+                <td class="interactive" data-col="1">15</td>
+                <td class="interactive" data-col="2">15</td>
+                <td class="interactive" data-col="3">15</td>
+                <td class="interactive" data-col="4">15</td>
+                <td class="interactive" data-col="5">15</td>
+                <td class="interactive" data-col="6">15</td>
+            </tr>
+            <!-- Row 2 -->
+            <tr data-row="2">
+                <td class="row-header">加上：玩具 (2kg, 20元)</td>
+                <td class="interactive" data-col="0">0</td>
+                <td class="interactive" data-col="1">15</td>
+                <td class="interactive" data-col="2">20</td>
+                <td class="interactive" data-col="3">35</td>
+                <td class="interactive" data-col="4">35</td>
+                <td class="interactive" data-col="5">35</td>
+                <td class="interactive" data-col="6">35</td>
+            </tr>
+            <!-- Row 3 -->
+            <tr data-row="3">
+                <td class="row-header">加上：鞋子 (3kg, 30元)</td>
+                <td class="interactive" data-col="0">0</td>
+                <td class="interactive" data-col="1">15</td>
+                <td class="interactive" data-col="2">20</td>
+                <td class="interactive" data-col="3">35</td>
+                <td class="interactive" data-col="4">45</td>
+                <td class="interactive" data-col="5">50</td>
+                <td class="interactive" data-col="6">65</td>
+            </tr>
+            <!-- Row 4 -->
+            <tr data-row="4">
+                <td class="row-header">加上：相机 (4kg, 50元)</td>
+                <td class="interactive" data-col="0">0</td>
+                <td class="interactive" data-col="1">15</td>
+                <td class="interactive" data-col="2">20</td>
+                <td class="interactive" data-col="3">35</td>
+                <td class="interactive" data-col="4">50</td>
+                <td class="interactive" data-col="5">65</td>
+                <td class="interactive" data-col="6">70</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="explain-box" id="explainBox">
+        点击表格中绿白相间的数字，这里会实时显示计算机在计算这个位置时的“内心活动”和决策公式。
+    </div>
+</div>
+
+<script>
+    // 定义物品属性（索引与行号对应）
+    const items = [
+        { name: "无", weight: 0, value: 0 },
+        { name: "书本", weight: 1, value: 15 },
+        { name: "玩具", weight: 2, value: 20 },
+        { name: "鞋子", weight: 3, value: 30 },
+        { name: "相机", weight: 4, value: 50 }
+    ];
+
+    const table = document.getElementById('dpTable');
+    const explainBox = document.getElementById('explainBox');
+
+    table.addEventListener('click', function(e) {
+        const cell = e.target;
+        if (!cell.classList.contains('interactive')) return;
+
+        // 清除历史高亮
+        const allCells = table.querySelectorAll('td');
+        allCells.forEach(c => {
+            c.classList.remove('highlight-self', 'highlight-above', 'highlight-source');
+        });
+
+        const row = parseInt(cell.parentNode.getAttribute('data-row'));
+        const col = parseInt(cell.getAttribute('data-col'));
+        const curItem = items[row];
+
+        // 1. 高亮当前格（绿色）
+        cell.classList.add('highlight-self');
+
+        // 2. 高亮正上方格（橙色）
+        const aboveCell = table.querySelector(`tr[data-row="${row-1}"] td[data-col="${col}"]`);
+        if (aboveCell) aboveCell.classList.add('highlight-above');
+
+        let explainText = `<strong>您点击了格 [${curItem.name} 行, 容量 ${col}kg]：</strong><br>`;
+
+        if (col < curItem.weight) {
+            // 放不下
+            explainText += `当前容量为 <strong>${col}kg</strong>，而新加入的物品 [${curItem.name}] 重达 <strong>${curItem.weight}kg</strong>。根本装不下！<br>`;
+            explainText += `决策结果：直接继承不装它时的最优解。<strong>当前最大价值 = ${cell.innerText} 元</strong>。`;
+        } else {
+            // 能放下，进行决策
+            const valAbove = parseInt(aboveCell.innerText);
+            const remainCol = col - curItem.weight;
+            const sourceCell = table.querySelector(`tr[data-row="${row-1}"] td[data-col="${remainCol}"]`);
+            
+            // 3. 高亮腾出空间后的历史最优解格（蓝色）
+            if (sourceCell) sourceCell.classList.add('highlight-source');
+            const valSource = parseInt(sourceCell.innerText);
+            const valWithCurrent = valSource + curItem.value;
+
+            explainText += `当前容量为 <strong>${col}kg</strong>，新物品 [${curItem.name}]（重 ${curItem.weight}kg，值 ${curItem.value}元）可以放得下。计算机开始比较：<br>`;
+            explainText += `• <strong>选择A（不放）</strong>：直接看正上方，价值为 <strong>${valAbove} 元</strong>。<br>`;
+            explainText += `• <strong>选择B（要放）</strong>：先腾出空间，剩余 ${col} - ${curItem.weight} = <strong>${remainCol}kg</strong>。查上方蓝色格子，`;
+            explainText += `在剩余空间里放之前物品最大值是 ${valSource} 元。加上新物品本身价值 ${curItem.value} 元，总价值为 ${valSource} + ${curItem.value} = <strong>${valWithCurrent} 元</strong>。<br>`;
+            
+            if (valWithCurrent > valAbove) {
+                explainText += `决策结果：选择B（放）更划算。<strong>当前最大价值 = max(${valAbove}, ${valWithCurrent}) = ${cell.innerText} 元</strong>。`;
+            } else {
+                explainText += `决策结果：选择A（不放）更划算。<strong>当前最大价值 = max(${valAbove}, ${valWithCurrent}) = ${cell.innerText} 元</strong>。`;
+            }
+        }
+
+        explainBox.innerHTML = explainText;
+    });
+</script>
+
+</body>
+</html>
