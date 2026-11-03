@@ -37,3 +37,7 @@ venv/
 *.log
 *.tmp
 *.bak
+
+# Videos (keep local)
+*.mp4
+
